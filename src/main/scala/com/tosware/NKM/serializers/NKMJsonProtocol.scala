@@ -1,8 +1,12 @@
 package com.tosware.NKM.serializers
 
+import reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.{universe => ru}
 import com.tosware.NKM.actors.Game._
 import com.tosware.NKM.models._
 import spray.json._
+
+import scala.reflect.ClassTag
 
 trait NKMJsonProtocol extends DefaultJsonProtocol {
 
@@ -52,25 +56,36 @@ trait NKMJsonProtocol extends DefaultJsonProtocol {
   implicit val characterPlacedFormat: RootJsonFormat[CharacterPlaced] = jsonFormat2(CharacterPlaced)
   implicit val characterMovedFormat: RootJsonFormat[CharacterMoved] = jsonFormat2(CharacterMoved)
 
-  implicit object EventJsonFormat extends RootJsonFormat[Event] {
-    val playerAddedId: JsString = JsString("PlayerAdded")
-    val characterAddedId: JsString = JsString("CharacterAdded")
-    val characterPlacedId: JsString = JsString("CharacterPlaced")
-    val characterMovedId: JsString = JsString("CharacterMoved")
+  val eventFormatMap: Map[Class[_ <: Event], RootJsonFormat[_ <: Event]] = Map(
+    classOf[PlayerAdded] -> playerAddedFormat,
+    classOf[CharacterAdded] -> characterAddedFormat,
+    classOf[CharacterPlaced] -> characterPlacedFormat,
+    classOf[CharacterMoved] -> characterMovedFormat,
+  )
 
-    override def write(obj: Event): JsValue = obj match {
-      case e: PlayerAdded => JsArray(Vector(playerAddedId, playerAddedFormat.write(e)))
-      case e: CharacterAdded => JsArray(Vector(characterAddedId, characterAddedFormat.write(e)))
-      case e: CharacterPlaced => JsArray(Vector(characterPlacedId, characterPlacedFormat.write(e)))
-      case e: CharacterMoved => JsArray(Vector(characterMovedId, characterMovedFormat.write(e)))
-    }
-    override def read(json: JsValue): Event = json match {
-      case JsArray(Vector(`playerAddedId`, jsEvent)) => playerAddedFormat.read(jsEvent)
-      case JsArray(Vector(`characterAddedId`, jsEvent)) => characterAddedFormat.read(jsEvent)
-      case JsArray(Vector(`characterPlacedId`, jsEvent)) => characterPlacedFormat.read(jsEvent)
-      case JsArray(Vector(`characterMovedId`, jsEvent)) => characterMovedFormat.read(jsEvent)
-    }
+  def eventType1[P1 :Event, T <: Product :ClassTag](construct: P1 => T): RootJsonFormat[T] = jsonFormat1(construct)
+
+  def getEventId(t: Class[_ <: Event]): String = t.getName
+
+  val idEventMap: Map[String, Class[_ <: Event]] = eventFormatMap.map {
+    case (k, v) => (getEventId(k), k)
   }
+  val eventIdMap: Map[Class[_ <: Event], String] = idEventMap.map(_.swap)
 
 
+  implicit object EventJsonFormat extends RootJsonFormat[Event] {
+    override def write(obj: _ <: Event): JsValue = {
+      val (id, json) = obj match {
+        case e: PlayerAdded => (eventIdMap(classOf[PlayerAdded]), playerAddedFormat.write(e))
+        case e: CharacterAdded => (eventIdMap(classOf[CharacterAdded]), characterAddedFormat.write(e))
+        case e: CharacterPlaced => (eventIdMap(classOf[CharacterPlaced]), characterPlacedFormat.write(e))
+        case e: CharacterMoved => (eventIdMap(classOf[CharacterMoved]), characterMovedFormat.write(e))
+      }
+      JsArray(Vector(JsString(id), json))
+      }
+
+     override def read(json: JsValue): Event = json match {
+       case JsArray(Vector(JsString(id), jsEvent)) => eventFormatMap(idEventMap(id)).read(jsEvent)
+     }
+  }
 }

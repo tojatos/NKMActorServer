@@ -9,7 +9,7 @@ import akka.util.Timeout
 import com.tosware.NKM.actors.Game._
 import com.tosware.NKM.actors.NKMData.GetHexMaps
 import com.tosware.NKM.actors._
-import com.tosware.NKM.models.{GameState, HexMap}
+import com.tosware.NKM.models._
 import com.tosware.NKM.serializers.NKMJsonProtocol
 
 import scala.concurrent.Await
@@ -36,20 +36,25 @@ object Main extends App with NKMJsonProtocol with SprayJsonSupport {
     }
   Http().newServerAt("localhost", 8080).bindFlow(skeleton)
 
-//    val playerNames = List("Ryszard", "Ania", "Ola")
-//    val characters: List[NKMCharacter] = List[NKMCharacter](
-//      NKMCharacter("Aqua", 12, Stat(32), Stat(43), Stat(4), Stat(34), Stat(4)),
-//      NKMCharacter("Dekomori Sanae", 14, Stat(32), Stat(43), Stat(4), Stat(34), Stat(4)),
-//      NKMCharacter("Touka", 0, Stat(34), Stat(43), Stat(4), Stat(34), Stat(5))
-//    )
-//
-//    val touka = characters.find(_.name == "Touka").get
-//
-//    playerNames.foreach(n => game ! AddPlayer(n))
+  def test(): Unit = {
+//    import system.dispatcher
+    val playerNames = List("Ryszard", "Ania", "Ola")
+    val characters: List[NKMCharacter] = List[NKMCharacter](
+      NKMCharacter("Aqua", 12, Stat(32), Stat(43), Stat(4), Stat(34), Stat(4)),
+      NKMCharacter("Dekomori Sanae", 14, Stat(32), Stat(43), Stat(4), Stat(34), Stat(4)),
+      NKMCharacter("Touka", 0, Stat(34), Stat(43), Stat(4), Stat(34), Stat(5))
+    )
+
+    val touka = characters.find(_.name == "Touka").get
+
+    playerNames.foreach(n => game ! AddPlayer(n))
 //    val players = Await.result((game ? GetState).mapTo[GameState].map(s => s.players), 2 seconds)
-//
-//    characters.foreach(c => game ! AddCharacter("Ola", c))
-//
-//    game ! PlaceCharacter(HexCoordinates(4, 5), touka)
-//    game ! MoveCharacter(HexCoordinates(0, 0), touka)
+
+    characters.foreach(c => game ! AddCharacter("Ola", c))
+
+    game ! PlaceCharacter(HexCoordinates(4, 5), touka)
+    game ! MoveCharacter(HexCoordinates(0, 0), touka)
+  }
+
+  test()
 }
